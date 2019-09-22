@@ -26,20 +26,20 @@ $(call inherit-product, vendor/aosp/config/common_full_phone.mk)
 TARGET_GAPPS_ARCH := arm64
 TARGET_BOOT_ANIMATION_RES := 720
 
-# Inherit from land device
+# Inherit from ugg device
 $(call inherit-product, $(LOCAL_PATH)/device.mk)
 
 PRODUCT_BRAND := Xiaomi
-PRODUCT_MODEL := Redmi 3S
-PRODUCT_DEVICE := land
+PRODUCT_MODEL := Redmi Note 5A Prime
+PRODUCT_DEVICE := ugg
 PRODUCT_MANUFACTURER := Xiaomi
-PRODUCT_NAME := aosp_land
+PRODUCT_NAME := aosp_ugg
 
 PRODUCT_GMS_CLIENTID_BASE := android-xiaomi
 
-TARGET_VENDOR_PRODUCT_NAME := land
+TARGET_VENDOR_PRODUCT_NAME := ugg
 
 PRODUCT_BUILD_PROP_OVERRIDES += \
-    PRIVATE_BUILD_DESC="land-user 6.0.1 MMB29M V9.6.1.0.MALMIFD release-keys"
+    PRIVATE_BUILD_DESC="ugg-user 7.1.2 N2G47H V10.3.2.0.NDKCNXM release-keys"
 
-BUILD_FINGERPRINT := Xiaomi/land/land:6.0.1/MMB29M/V9.6.1.0.MALMIFD:user/release-keys
+BUILD_FINGERPRINT := Xiaomi/ugg/ugg:7.1.2/N2G47H/V10.3.2.0.NDKCNXM:user/release-keys

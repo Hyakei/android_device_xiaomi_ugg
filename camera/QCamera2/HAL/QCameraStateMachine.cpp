@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
 *
 * Redistribution and use in source and binary forms, with or without
 * modification, are permitted provided that the following conditions are
@@ -131,10 +131,7 @@ QCameraStateMachine::QCameraStateMachine(QCamera2HardwareInterface *ctrl) :
     m_bDelayPreviewMsgs = false;
     m_DelayedMsgs = 0;
     m_RestoreZSL = TRUE;
-
-    m_bDisplayFrame = TRUE;
     m_bPreviewCallbackNeeded = TRUE;
-    m_bPreviewRestartedInternal = FALSE;
 }
 
 /*===========================================================================
@@ -640,6 +637,7 @@ int32_t QCameraStateMachine::procEvtPreviewStoppedState(qcamera_sm_evt_enum_t ev
             LOGW("Free video handle %d %d", evt, m_state);
             QCameraVideoMemory::closeNativeHandle((const void *)payload);
         }
+	break;
     case QCAMERA_SM_EVT_PRE_START_RECORDING:
     case QCAMERA_SM_EVT_RESTART_STOP_PREVIEW:
     case QCAMERA_SM_EVT_RESTART_START_PREVIEW:
@@ -1060,6 +1058,7 @@ int32_t QCameraStateMachine::procEvtPreviewReadyState(qcamera_sm_evt_enum_t evt,
             LOGW("Free video handle %d %d", evt, m_state);
             QCameraVideoMemory::closeNativeHandle((const void *)payload);
         }
+	break;
     case QCAMERA_SM_EVT_PRE_START_RECORDING:
     case QCAMERA_SM_EVT_RESTART_STOP_PREVIEW:
     case QCAMERA_SM_EVT_RESTART_START_PREVIEW:
@@ -1323,9 +1322,9 @@ int32_t QCameraStateMachine::procEvtPreviewingState(qcamera_sm_evt_enum_t evt,
         break;
     case QCAMERA_SM_EVT_STOP_PREVIEW:
         {
-            m_state = QCAMERA_SM_STATE_PREVIEW_STOPPED;
             rc = m_parent->stopPreview();
             applyDelayedMsgs();
+            m_state = QCAMERA_SM_STATE_PREVIEW_STOPPED;
             result.status = rc;
             result.request_api = evt;
             result.result_type = QCAMERA_API_RESULT_TYPE_DEF;
@@ -1554,6 +1553,7 @@ int32_t QCameraStateMachine::procEvtPreviewingState(qcamera_sm_evt_enum_t evt,
         break;
     case QCAMERA_SM_EVT_SEND_COMMAND_RESTART:
         {
+#ifndef VANILLA_HAL
             qcamera_sm_evt_command_payload_t *cmd_payload =
                     (qcamera_sm_evt_command_payload_t *)payload;
             if ((CAMERA_CMD_LONGSHOT_ON == cmd_payload->cmd) &&
@@ -1568,6 +1568,7 @@ int32_t QCameraStateMachine::procEvtPreviewingState(qcamera_sm_evt_enum_t evt,
                     }
                 }
             }
+#endif
             result.status = rc;
             result.request_api = evt;
             result.result_type = QCAMERA_API_RESULT_TYPE_DEF;
@@ -1594,6 +1595,7 @@ int32_t QCameraStateMachine::procEvtPreviewingState(qcamera_sm_evt_enum_t evt,
             LOGW("Free video handle %d %d", evt, m_state);
             QCameraVideoMemory::closeNativeHandle((const void *)payload);
         }
+	break;
     case QCAMERA_SM_EVT_RELEASE:
         {
             LOGE("Error!! cannot handle evt(%d) in state(%d)", evt, m_state);
@@ -1857,6 +1859,18 @@ int32_t QCameraStateMachine::procEvtPrepareSnapshotState(qcamera_sm_evt_enum_t e
             switch (cam_evt->server_event_type) {
             case CAM_EVENT_TYPE_DAEMON_DIED:
                 {
+                    // Send internal events to stop indefinite wait on prepare
+                    // snapshot done event.
+                    result.status = rc;
+                    result.request_api = QCAMERA_SM_EVT_PREPARE_SNAPSHOT;
+                    result.result_type = QCAMERA_API_RESULT_TYPE_DEF;
+                    m_parent->signalAPIResult(&result);
+
+                    result.status = rc;
+                    result.request_api = QCAMERA_SM_EVT_TAKE_PICTURE;
+                    result.result_type = QCAMERA_API_RESULT_TYPE_DEF;
+                    m_parent->signalAPIResult(&result);
+
                     m_parent->sendEvtNotify(CAMERA_MSG_ERROR,
                                             CAMERA_ERROR_SERVER_DIED,
                                             0);
@@ -2029,14 +2043,6 @@ int32_t QCameraStateMachine::procEvtPicTakingState(qcamera_sm_evt_enum_t evt,
         {
             // cancel picture first
             rc = m_parent->cancelPicture();
-
-            bool restartPreview = m_parent->isPreviewRestartEnabled();
-            if (restartPreview && m_bPreviewRestartedInternal) {
-                LOGW("preview early restarted, stop preivew now");
-                m_parent->stopPreview();
-                m_bPreviewRestartedInternal = FALSE;
-            }
-
             m_state = QCAMERA_SM_STATE_PREVIEW_STOPPED;
 
             result.status = rc;
@@ -2248,8 +2254,8 @@ int32_t QCameraStateMachine::procEvtPicTakingState(qcamera_sm_evt_enum_t evt,
             switch (cam_evt->server_event_type) {
             case CAM_EVENT_TYPE_DAEMON_DIED:
                 {
-                    // Send internal events to release statemachine
-                    // thread to process CAMERA_ERROR_SERVER_DIED error
+                    // Send internal events to stop indefinite wait on prepare
+                    // snapshot done event.
                     result.status = rc;
                     result.request_api = QCAMERA_SM_EVT_PREPARE_SNAPSHOT;
                     result.result_type = QCAMERA_API_RESULT_TYPE_DEF;
@@ -2304,11 +2310,6 @@ int32_t QCameraStateMachine::procEvtPicTakingState(qcamera_sm_evt_enum_t evt,
                     applyDelayedMsgs();
                     rc = m_parent->startPreview();
                 }
-
-                /* set internal preivew restarted flag here,
-                 * because we hw is streaming now
-                 */
-                m_bPreviewRestartedInternal = true;
             }
 
             result.status = rc;
@@ -2334,11 +2335,6 @@ int32_t QCameraStateMachine::procEvtPicTakingState(qcamera_sm_evt_enum_t evt,
                         rc = m_parent->startPreview();
                     }
                 }
-
-                /* reset internal restarted preview flag,
-                 * since we set the state to previewing exciptly
-                 */
-                m_bPreviewRestartedInternal = FALSE;
                 m_state = QCAMERA_SM_STATE_PREVIEWING;
             } else {
                 m_state = QCAMERA_SM_STATE_PREVIEW_STOPPED;
@@ -3621,6 +3617,18 @@ int32_t QCameraStateMachine::procEvtPreviewPicTakingState(qcamera_sm_evt_enum_t 
             switch (cam_evt->server_event_type) {
             case CAM_EVENT_TYPE_DAEMON_DIED:
                 {
+                    // Send internal events to stop indefinite wait on prepare
+                    // snapshot done event.
+                    result.status = rc;
+                    result.request_api = QCAMERA_SM_EVT_PREPARE_SNAPSHOT;
+                    result.result_type = QCAMERA_API_RESULT_TYPE_DEF;
+                    m_parent->signalAPIResult(&result);
+
+                    result.status = rc;
+                    result.request_api = QCAMERA_SM_EVT_TAKE_PICTURE;
+                    result.result_type = QCAMERA_API_RESULT_TYPE_DEF;
+                    m_parent->signalAPIResult(&result);
+
                     m_parent->sendEvtNotify(CAMERA_MSG_ERROR,
                                             CAMERA_ERROR_SERVER_DIED,
                                             0);

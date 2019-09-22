@@ -25,9 +25,9 @@ LOCAL_C_INCLUDES := \
 
 LOCAL_CFLAGS := -Wall
 
-LOCAL_MODULE := libinit_land
+LOCAL_MODULE := libinit_ugg
 LOCAL_MODULE_TAGS := optional
-LOCAL_SRC_FILES := init_land.cpp
+LOCAL_SRC_FILES := init_ugg.cpp
 
 LOCAL_STATIC_LIBRARIES := libbase
 

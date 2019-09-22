@@ -1,3 +1,4 @@
+
 #
 # Copyright 2017 The Android Open Source Project
 #
@@ -14,4 +15,4 @@
 # limitations under the License.
 #
 
-add_lunch_combo aosp_land-userdebug
+add_lunch_combo aosp_ugg-userdebug

@@ -34,7 +34,7 @@
 #include <utils/Errors.h>
 #define MMAN_H <SYSTEM_HEADER_PREFIX/mman.h>
 #include MMAN_H
-#include "gralloc.h"
+#include "hardware/gralloc.h"
 #include "gralloc_priv.h"
 
 // Camera dependencies
@@ -1672,8 +1672,7 @@ int QCameraVideoMemory::closeNativeHandle(const void *data, bool metadata)
             return BAD_VALUE;
         }
     } else {
-        LOGE("Not of type video meta buffer. Failed");
-        return BAD_VALUE;
+        LOGW("Warning: Not of type video meta buffer");
     }
 #endif
     return rc;
@@ -1806,6 +1805,8 @@ QCameraGrallocMemory::QCameraGrallocMemory(camera_request_memory memory, void* c
         mBufferHandle[i] = NULL;
         mLocalFlag[i] = BUFFER_NOT_OWNED;
         mPrivateHandle[i] = NULL;
+        mBufferStatus[i] = STATUS_IDLE;
+        mCameraMemory[i] = NULL;
     }
 }
 
@@ -2342,14 +2343,6 @@ void QCameraGrallocMemory::deallocate()
         mLocalFlag[cnt] = BUFFER_NOT_OWNED;
         LOGH("put buffer %d successfully", cnt);
     }
-    if(mWindow)
-    {
-        //cleaning up buffers cached in framework
-        if(mWindow->set_buffer_count(mWindow, 0) != 0)
-        {
-            LOGE("ERROR: Cannot clean the framework cached buffers");
-        }
-    }
     mBufferCount = 0;
     mMappableBuffers = 0;
     LOGD("X ",__FUNCTION__);
@@ -2514,5 +2507,24 @@ uint8_t QCameraGrallocMemory::checkIfAllBuffersMapped() const
     return (mBufferCount == mMappableBuffers);
 }
 
+/*===========================================================================
+ * FUNCTION   : setBufferStatus
+ *
+ * DESCRIPTION: set buffer status
+ *
+ * PARAMETERS :
+ *   @index   : index of the buffer
+ *   @status  : status of the buffer, whether skipped,etc
+ *
+ * RETURN     : none
+ *==========================================================================*/
+void QCameraGrallocMemory::setBufferStatus(uint32_t index, BufferStatus status)
+{
+    if (index >= mBufferCount) {
+        LOGE("index out of bound");
+        return;
+    }
+    mBufferStatus[index] = status;
+}
 
 }; //namespace qcamera

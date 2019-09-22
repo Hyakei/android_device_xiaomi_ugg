@@ -61,7 +61,7 @@ static void property_override(char const prop[], char const value[]) {
         __system_property_add(prop, strlen(prop), value, strlen(value));
 }
 
-static void import_kernel_cmdline_land(bool in_qemu,
+static void import_kernel_cmdline_ugg(bool in_qemu,
                            const std::function<void(const std::string&, const std::string&, bool)>& fn) {
     std::string cmdline;
     android::base::ReadFileToString("/proc/cmdline", &cmdline);
@@ -90,11 +90,11 @@ static void parse_cmdline_boardid(const std::string& key,
 
 static void variant_properties() {
     std::string product = GetProperty("ro.product.name", "");
-    if (product.find("land") == std::string::npos)
+    if (product.find("ugg") == std::string::npos)
         return;
 
     // Get board_id from cmdline
-    import_kernel_cmdline_land(false, parse_cmdline_boardid);
+    import_kernel_cmdline_ugg(false, parse_cmdline_boardid);
 
     // Set board id
     property_set("ro.product.wt.boardid", board_id.c_str());
